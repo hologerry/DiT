@@ -7,15 +7,21 @@
 """
 Sample new images from a pre-trained DiT.
 """
+import argparse
+import os
+
 import torch
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
-from torchvision.utils import save_image
-from diffusion import create_diffusion
+
 from diffusers.models import AutoencoderKL
+from torchvision.utils import save_image
+
+from diffusion import create_diffusion
 from download import find_model
 from models import DiT_models
-import argparse
+
+
+torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cudnn.allow_tf32 = True
 
 
 def main(args):
@@ -31,10 +37,7 @@ def main(args):
 
     # Load model:
     latent_size = args.image_size // 8
-    model = DiT_models[args.model](
-        input_size=latent_size,
-        num_classes=args.num_classes
-    ).to(device)
+    model = DiT_models[args.model](input_size=latent_size, num_classes=args.num_classes).to(device)
     # Auto-download a pre-trained model or load a custom DiT checkpoint from train.py:
     ckpt_path = args.ckpt or f"DiT-XL-2-{args.image_size}x{args.image_size}.pt"
     state_dict = find_model(ckpt_path)
@@ -59,16 +62,24 @@ def main(args):
 
     # Sample images:
     samples = diffusion.p_sample_loop(
-        model.forward_with_cfg, z.shape, z, clip_denoised=False, model_kwargs=model_kwargs, progress=True, device=device
+        model.forward_with_cfg,
+        z.shape,
+        z,
+        clip_denoised=False,
+        model_kwargs=model_kwargs,
+        progress=True,
+        device=device,
     )
     samples, _ = samples.chunk(2, dim=0)  # Remove null class samples
     samples = vae.decode(samples / 0.18215).sample
 
     # Save and display images:
-    save_image(samples, "sample.png", nrow=4, normalize=True, value_range=(-1, 1))
+    os.makedirs("vis", exist_ok=True)
+    save_image(samples, "vis/sample.png", nrow=4, normalize=True, value_range=(-1, 1))
 
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, choices=list(DiT_models.keys()), default="DiT-XL/2")
     parser.add_argument("--vae", type=str, choices=["ema", "mse"], default="mse")
@@ -77,7 +88,11 @@ if __name__ == "__main__":
     parser.add_argument("--cfg-scale", type=float, default=4.0)
     parser.add_argument("--num-sampling-steps", type=int, default=250)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--ckpt", type=str, default=None,
-                        help="Optional path to a DiT checkpoint (default: auto-download a pre-trained DiT-XL/2 model).")
+    parser.add_argument(
+        "--ckpt",
+        type=str,
+        default=None,
+        help="Optional path to a DiT checkpoint (default: auto-download a pre-trained DiT-XL/2 model).",
+    )
     args = parser.parse_args()
     main(args)
