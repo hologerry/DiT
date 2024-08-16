@@ -85,7 +85,8 @@ samples = diffusion.p_sample_loop(
 samples, _ = samples.chunk(2, dim=0)  # Remove null class samples
 samples = vae.decode(samples / 0.18215).sample
 
+
 # Save and display images:
-save_image(samples, "sample.png", nrow=int(samples_per_row), normalize=True, value_range=(-1, 1))
-samples = Image.open("sample.png")
+save_image(samples, "vis/sample.png", nrow=int(samples_per_row), normalize=True, value_range=(-1, 1))
+samples = Image.open("vis/sample.png")
 display(samples)

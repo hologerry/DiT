@@ -17,7 +17,7 @@ from torchvision.utils import save_image
 
 from diffusion import create_diffusion
 from download import find_model
-from models import DiT_models
+from models import DiT, DiT_models
 
 
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -37,7 +37,7 @@ def main(args):
 
     # Load model:
     latent_size = args.image_size // 8
-    model = DiT_models[args.model](input_size=latent_size, num_classes=args.num_classes).to(device)
+    model: DiT = DiT_models[args.model](input_size=latent_size, num_classes=args.num_classes).to(device)
     # Auto-download a pre-trained model or load a custom DiT checkpoint from train.py:
     ckpt_path = args.ckpt or f"DiT-XL-2-{args.image_size}x{args.image_size}.pt"
     state_dict = find_model(ckpt_path)
@@ -61,7 +61,7 @@ def main(args):
     model_kwargs = dict(y=y, cfg_scale=args.cfg_scale)
 
     # Sample images:
-    samples = diffusion.p_sample_loop(
+    samples: torch.Tensor = diffusion.p_sample_loop(
         model.forward_with_cfg,
         z.shape,
         z,
@@ -74,8 +74,8 @@ def main(args):
     samples = vae.decode(samples / 0.18215).sample
 
     # Save and display images:
-    os.makedirs("vis", exist_ok=True)
-    save_image(samples, "vis/sample.png", nrow=4, normalize=True, value_range=(-1, 1))
+    os.makedirs("output", exist_ok=True)
+    save_image(samples, "output/sample.png", nrow=4, normalize=True, value_range=(-1, 1))
 
 
 if __name__ == "__main__":
